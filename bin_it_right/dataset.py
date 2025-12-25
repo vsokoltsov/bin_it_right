@@ -45,6 +45,10 @@ class DataFrameInitializer:
 
         return classes
 
+    @classmethod
+    def load_classes(self):
+        return {k-1: v for k, v in self.CLASSES.items()}
+
 class GarbageClassificationDataset(Dataset):
 
     def __init__(self, df, transform=None):
