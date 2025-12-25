@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass
 import yaml
-from typing import Dict
+from typing import Dict, Optional
 import pandas as pd
 from torch.utils.data import Dataset
 from PIL import Image
@@ -10,7 +10,16 @@ import torch
 @dataclass
 class DataFrameInitializer:
     base_path: str
-    classes_path: str
+    classes_path: Optional[str] = None
+
+    CLASSES = {
+        1: 'glass',
+        2: 'paper',
+        3: 'cardboard',
+        4: 'plastic',
+        5: 'metal',
+        6: 'trash'
+    }
 
     def from_file(self, filepath: str) -> pd.DataFrame:
         rows = []
@@ -28,6 +37,9 @@ class DataFrameInitializer:
 
 
     def _load_classes(self) -> Dict[int, str]:
+        if not self.classes_path:
+            return self.CLASSES
+
         with open(self.classes_path, "r") as f:
             classes = yaml.safe_load(f)
 
