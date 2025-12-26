@@ -1,7 +1,9 @@
 import click
+from dataclasses import dataclass
 
 from bin_it_right.dataset import DataFrameInitializer, GarbageClassificationDataset
 from bin_it_right.modeling.pytorch import get_device, GarbageClassificationCNN, GarbageClassificationPretrained
+from bin_it_right.modeling.image_transformers import get_train_transform, get_val_transform
 
 import numpy as np
 import torch
@@ -12,30 +14,16 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from typing import Dict, List
 
+@dataclass
+class Loaders:
+    train_loader: DataLoader
+    val_loader: DataLoader
+    test_loader: DataLoader
+
 def get_transformers():
-    input_size = 200
-
-    # ImageNet normalization values
-    mean = [0.485, 0.456, 0.406]
-    std = [0.229, 0.224, 0.225]
-
-    train_transforms = transforms.Compose([
-        transforms.Resize((input_size, input_size)),
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomRotation(10),
-        transforms.ColorJitter(brightness=0.1, contrast=0.1),
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std),
-    ])
-    val_transforms = transforms.Compose([
-        transforms.Resize((input_size, input_size)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=mean, std=std)
-    ])
-
     return {
-        'train': train_transforms,
-        'val': val_transforms
+        'train': get_train_transform(),
+        'val': get_val_transform()
     }
 
 def train_eval_model(
@@ -151,6 +139,107 @@ def test_model(model: nn.Module, test_loader, device) -> Dict[str, List[float]]:
         'preds': all_preds
     }
 
+def get_criterion(df: pd.DataFrame, device: torch.device) -> nn.CrossEntropyLoss:
+    class_counts = df["class"].value_counts().sort_index()
+
+    alpha = 0.5
+    class_weights = (1.0 / class_counts) ** alpha
+    # normalize, so that average weight is ~1
+    class_weights = class_weights / class_weights.mean()
+
+    # cast to tensor
+    class_weights_tensor = torch.tensor(class_weights.values, dtype=torch.float32).to(device)
+
+    return nn.CrossEntropyLoss(weight=class_weights_tensor)
+
+def train_raw_model(criterion: nn.CrossEntropyLoss, device: torch.device, loaders: Loaders, model_path: str, epochs: int):
+    model = GarbageClassificationCNN()
+    model.to(device)
+
+    optimizer = optim.Adam(
+        model.parameters(),
+        lr=1e-3,
+        weight_decay=1e-4,
+    )
+    train_eval_model(
+        model=model,
+        num_epochs=epochs,
+        best_model_path=model_path,
+        optimizer=optimizer,
+        criterion=criterion,
+        device=device,
+        train_loader=loaders.train_loader,
+        val_loader=loaders.val_loader
+    )
+
+    model_test = GarbageClassificationCNN(num_classes=6)
+    checkpoint = torch.load(
+        model_path,
+        map_location=device
+    )
+    model_test.load_state_dict(checkpoint["model_state_dict"])
+    model_test.to(device)
+    model_test.eval()
+
+    test_data = test_model(model=model_test, test_loader=loaders.test_loader, device=device)
+
+    click.echo(f"Test accuracy: {(test_data['labels'] == test_data['preds']).mean()}")
+
+def train_pretrained_model(criterion: nn.CrossEntropyLoss, device: torch.device, loaders: Loaders, model_path: str, epochs: int):
+    model = GarbageClassificationPretrained()
+    model.to(device)
+
+    for param in model.network.parameters():
+        param.requires_grad = False
+
+    for param in model.network.fc.parameters():
+        param.requires_grad = True
+
+    train_eval_model(
+        model=model,
+        num_epochs=epochs,
+        best_model_path=model_path,
+        optimizer=optim.Adam(
+            model.parameters(),
+            lr=0.001,
+            weight_decay=0.0001,
+        ),
+        criterion=criterion,
+        device=device,
+        train_loader=loaders.train_loader,
+        val_loader=loaders.val_loader
+    )
+
+    for _, param in model.network.named_parameters():
+        param.requires_grad = True
+
+    train_eval_model(
+        model=model,
+        num_epochs=epochs,
+        best_model_path=model_path,
+        optimizer=optim.Adam(
+            model.parameters(),
+            lr=0.0001,
+            weight_decay=0.0001,
+        ),
+        criterion=criterion,
+        device=device,
+        train_loader=loaders.train_loader,
+        val_loader=loaders.val_loader
+    )
+
+    model = GarbageClassificationPretrained(num_classes=6)
+    checkpoint = torch.load(
+        model_path,
+        map_location=device
+    )
+    model.load_state_dict(checkpoint["model_state_dict"])
+    model.to(device)
+    model.eval()
+
+    test_data = test_model(model=model, test_loader=loaders.test_loader, device=device)
+
+    click.echo(f"Test accuracy: {(test_data['labels'] == test_data['preds']).mean()}")
 
 @click.command()
 @click.argument('dataset_path')
@@ -171,53 +260,34 @@ def train_classifier(dataset_path, model_path, model, model_provider, epochs):
     dataset_val = GarbageClassificationDataset(df=df_val, transform=trnsfrms['val'])
     dataset_test = GarbageClassificationDataset(df=df_test, transform=trnsfrms['val'])
 
-    train_loader = DataLoader(dataset_train, batch_size=32)
-    val_loader = DataLoader(dataset_val, batch_size=32, shuffle=False)
-    test_loader = DataLoader(dataset_test, batch_size=32, shuffle=False)
+    loaders = Loaders(
+        train_loader= DataLoader(dataset_train, batch_size=32),
+        val_loader=DataLoader(dataset_val, batch_size=32, shuffle=False),
+        test_loader=DataLoader(dataset_test, batch_size=32, shuffle=False)
+    )
 
     device = get_device()
-    model = GarbageClassificationCNN()
-    model.to(device)
-
-    class_counts = df_train["class"].value_counts().sort_index()
-
-    alpha = 0.5
-    class_weights = (1.0 / class_counts) ** alpha
-    # normalize, so that average weight is ~1
-    class_weights = class_weights / class_weights.mean()
-
-    # cast to tensor
-    class_weights_tensor = torch.tensor(class_weights.values, dtype=torch.float32).to(device)
-
-    criterion = nn.CrossEntropyLoss(weight=class_weights_tensor)
-    optimizer = optim.Adam(
-        model.parameters(),
-        lr=1e-3,
-        weight_decay=1e-4,
+    criterion = get_criterion(
+        df=df_train,
+        device=device
     )
-    train_eval_model(
-        model=model,
-        num_epochs=epochs,
-        best_model_path=model_path,
-        optimizer=optimizer,
-        criterion=criterion,
-        device=device,
-        train_loader=train_loader,
-        val_loader=val_loader
-    )
-
-    model_test = GarbageClassificationCNN(num_classes=6)
-    checkpoint = torch.load(
-        model_path,
-        map_location=device
-    )
-    model_test.load_state_dict(checkpoint["model_state_dict"])
-    model_test.to(device)
-    model_test.eval()
-
-    test_data = test_model(model=model_test, test_loader=test_loader, device=device)
-
-    click.echo(f"Test accuracy: {(test_data['labels'] == test_data['preds']).mean()}")
+    if model == 'raw':
+        train_raw_model(
+            criterion=criterion,
+            device=device,
+            loaders=loaders,
+            model_path=model_path,
+            epochs=epochs
+        )
+    elif model == 'pretrained':
+        train_pretrained_model(
+            criterion=criterion,
+            device=device,
+            loaders=loaders,
+            model_path=model_path,
+            epochs=epochs
+        )
+    
     
 
 if __name__ == '__main__':

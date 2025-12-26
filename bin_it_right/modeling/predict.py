@@ -1,35 +1,32 @@
 import os
 import click
 from torchvision import transforms
-from bin_it_right.modeling.pytorch import get_device, GarbageClassificationCNN
+from bin_it_right.modeling.pytorch import get_device, GarbageClassificationCNN, GarbageClassificationPretrained
+from bin_it_right.modeling.image_transformers import get_val_transform
 import torch
 from PIL import Image
 from bin_it_right.dataset import DataFrameInitializer
 import torch.nn.functional as F
 
-def get_val_transform():
-    input_size = 200
-
-    mean = [0.485, 0.456, 0.406]
-    std = [0.229, 0.224, 0.225]
-
-    return transforms.Compose([
-        transforms.Resize((input_size, input_size)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std),
-    ])
-
 @click.command()
 @click.argument("model_path")
 @click.argument("image_path")
-def predict_image(model_path, image_path):
+@click.option('--model-type', default='raw', help='Type of the model. Available options are: `raw` and `pretrained`')
+def predict_image(model_path, image_path, model_type):
+    if model_type not in ['raw', 'pretrained']:
+        raise ValueError(f"'model_type' parameter has wrong value {model_type}")
+
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model not found: {model_path}")
 
     device = get_device()
     click.echo(f"Using device: {device}")
 
-    model = GarbageClassificationCNN(num_classes=6)
+    if model_type == 'raw':
+        model = GarbageClassificationCNN(num_classes=6)
+    elif model_type == 'pretrained':
+        model = GarbageClassificationPretrained()
+
     checkpoint = torch.load(
         model_path,
         map_location=device
@@ -60,8 +57,6 @@ def predict_image(model_path, image_path):
     for idx, p in enumerate(probs.cpu().numpy()):
         name = classes.get(idx, f"class_{idx}")
         click.echo(f"  {idx}: {name:10s} -> {p:.4f}")
-
-
 
 if __name__ == '__main__':
     predict_image()

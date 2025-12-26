@@ -24,9 +24,12 @@ async def preduct(model_type: str, file: UploadFile = File(...) ) -> PredictionR
     object_content = await file.read()
     image = Image.open(io.BytesIO(object_content))
     classifier = TrashClassifier(
-        os.path.join(DATA_PATH, "processed", "best_model_raw.pt")
+        base_path=os.path.join(DATA_PATH, "processed")
     )
-    response = classifier.classify(image)
+    response = classifier.classify(
+        model_type=model_type,
+        image=image
+    )
     return PredictionResponse(
         pred_class=response.predicted_class,
         classes=response.classes_distribution

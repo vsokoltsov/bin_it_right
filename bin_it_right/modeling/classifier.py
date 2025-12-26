@@ -1,6 +1,7 @@
+import os
 from typing import Dict
 
-from bin_it_right.modeling.pytorch import get_device, GarbageClassificationCNN
+from bin_it_right.modeling.pytorch import get_device, GarbageClassificationCNN, GarbageClassificationPretrained
 from bin_it_right.dataset import DataFrameInitializer
 
 import torch
@@ -16,13 +17,19 @@ class ClassificationResponse:
 
 @dataclass
 class TrashClassifier:
-    model_path: str
+    base_path: str
 
-    def classify(self, image: Image):
+    def classify(self, model_type: str, image: Image):
         device = get_device()
-        model = GarbageClassificationCNN(num_classes=6)
+        if model_type == 'raw':
+            model = GarbageClassificationCNN(num_classes=6)
+            model_name = 'best_model_raw.pt'
+        elif model_type == 'pretrained':
+            model = GarbageClassificationPretrained()
+            model_name = 'best_model_pretrained.pt'
+
         checkpoint = torch.load(
-            self.model_path,
+            os.path.join(self.base_path, model_name),
             map_location=device
         )
         model.load_state_dict(checkpoint["model_state_dict"])
