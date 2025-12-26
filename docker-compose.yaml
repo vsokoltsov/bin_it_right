@@ -12,6 +12,8 @@ services:
     volumes:
       - ./:/app
       - ./data:/app/data
+    environment:
+      - RELOAD=True
     command:
       - uv
       - run
