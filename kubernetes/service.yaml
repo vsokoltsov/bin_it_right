@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bin-it-right-service
+  labels:
+    app: bin-it-right-api
+spec:
+  type: NodePort        # для kind удобно, для GKE можно поменять на LoadBalancer/ClusterIP
+  selector:
+    app: bin-it-right-api
+  ports:
+    - name: http
+      port: 8080        # порт сервиса внутри кластера
+      targetPort: 8080  # порт контейнера
+      nodePort: 30080   # порт, на который мы пробрасывали 30080->8080 в kind-config
