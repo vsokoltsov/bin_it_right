@@ -37,7 +37,7 @@ COPY data/processed/best_model_pretrained.pt /app/data/processed/best_model_pret
 EXPOSE 8080
 
 ENV UV_NO_SYNC=1
-CMD ["sh", "-c", "python -m bicycle_theft.api --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["uvicorn", "bin_it_right.api:api", "--host", "0.0.0.0", "--port", "8080"]
 
 FROM base AS ml
 
