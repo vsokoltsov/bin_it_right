@@ -4,7 +4,16 @@ This project is capstone 1 assignment for [Machine Learning Zoomcamp 2025](https
 
 ## Problem
 
+Streets of the modern western cities are filled with trash. 
+Management and utility companies are struggling with cleaning it up, and automatic services are having troubles
+in correct identification and sorting of the trash.
+Is it possible to write an image classifier, that could help waste resycling facilities to easiliy clasify and categorize garbage by it is image? Let us find out!
+
 ## Objective
+
+The goal of the project is to implement a image classifier, that will identify type of the garbage by the image
+
+As an input, it expects a photo of the garbage, and as an output - predicted class and probabilities of belonging to other classes
 
 ## Dataset
 
