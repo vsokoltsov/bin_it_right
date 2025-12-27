@@ -27,6 +27,56 @@ As an input, it expects a photo of the garbage, and as an output - predicted cla
 
 ## Project's diagram
 
+```mermaid
+---
+config:
+      theme: redux
+---
+flowchart TB
+    %% Sources
+    subgraph Data["Initial Data"]
+        RAW["Raw data: </br>Image for classes </br> Annotations"]
+    end
+    
+    %% Prepare
+    subgraph Prep["Data prepration"]
+        ETL["Load data"]
+        EDA["EDA:</br>Exploratory Data Analisys"]
+        SPLIT["Train / val / test split"]
+    end
+
+    %% Train model
+    subgraph Train["Train model"]
+        subgraph Pytorch["Pytorch"]
+            NEWPT["Train model from the scratch"]
+            PRETRAINEDPT["Train pretrained model (ResNet-50)"]
+        end
+        subgraph Tensorflow["Tensorflow"]
+            NEWTF["Train model from the scratch"]
+        end
+    end
+
+    %% Save artifacts
+    subgraph Artifacts["Artifacts"]
+        MODEL["Final model<br/>best_model"]
+    end
+
+    %% Inference
+    subgraph Inference["Inference"]
+        CLI["Script predict.py"]
+        API["FastAPI web service"]
+    end
+
+    RAW --> ETL --> EDA --> SPLIT
+    SPLIT --> Pytorch
+    SPLIT --> Tensorflow
+
+    Pytorch --> Artifacts
+    Tensorflow --> Artifacts
+    Artifacts --> Inference
+    
+```
+
 ## EDA
 
 ## Model selection
