@@ -8,6 +8,14 @@ This project is capstone 1 assignment for [Machine Learning Zoomcamp 2025](https
 
 ## Dataset
 
+* [Kaggle - Garbagle Classification dataset](https://www.kaggle.com/datasets/asdasdasasdas/garbage-classification) - contains example of images of 6 different classes:
+  * `cardboard` (393)
+  * `glass` (491)
+  * `metal` (400)
+  * `paper` (584)
+  * `plastic` (472)
+  * `trash` (127).
+
 ## Project's diagram
 
 ## EDA
