@@ -20,7 +20,27 @@ dependencies = [
     "scikit-learn>=1.8.0",
     "seaborn>=0.13.2",
     "torch>=2.9.1",
+    "torchinfo>=1.8.0",
     "torchvision>=0.24.1",
     "types-pyyaml>=6.0.12.20250915",
     "uvicorn>=0.40.0",
 ]
+
+[dependency-groups]
+dev = [
+    "black>=25.12.0",
+    "mypy>=1.19.1",
+    "ruff>=0.14.10",
+]
+
+[tool.mypy]
+python_version = "3.12"
+explicit_package_bases = true
+warn_unused_configs = true
+warn_return_any = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+strict_optional = true
