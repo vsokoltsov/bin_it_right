@@ -77,11 +77,25 @@ flowchart TB
 
 More on EDA you can find in dedicated [notebook](./notebooks/02_eda.ipynb)
 
-* All images have the same size + 
+* All images have the same size
+* The highest birghtness in `plastic` class
 
 ## Model selection
 
+For studying purposes, this project is implemented with two options of [Pytorch](https://pytorch.org/) framework:
+* Raw model
+* Pretrained ([ResNet-50](https://docs.pytorch.org/vision/main/models/generated/torchvision.models.resnet50.html)) model
+
 ## Evaluation metrics
+
+* [Accuracy](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.accuracy_score.html#accuracy-score) (overall classification accuracy)
+* [Balanced accuracy](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.balanced_accuracy_score.html#balanced-accuracy-score) (macro-averaged recall)
+* Macro-averaged [F1-score](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html#f1-score)
+* Weighted [F1-score](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html#f1-score)
+* Micro-averaged [F1-score](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html#f1-score)
+* Macro-averaged [Precision](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_score.html#precision-score)
+* Macro-averaged [Recall](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.recall_score.html)
+* [Matthews Correlation Coefficient](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html#matthews-corrcoef) (MCC)
 
 ## Project structure
 
