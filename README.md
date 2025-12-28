@@ -28,10 +28,6 @@ As an input, it expects a photo of the garbage, and as an output - predicted cla
 ## Project's diagram
 
 ```mermaid
----
-config:
-      theme: redux
----
 flowchart TB
     %% Sources
     subgraph Data["Initial Data"]
@@ -78,6 +74,10 @@ flowchart TB
 ```
 
 ## EDA
+
+More on EDA you can find in dedicated [notebook](./notebooks/02_eda.ipynb)
+
+* All images have the same size + 
 
 ## Model selection
 
