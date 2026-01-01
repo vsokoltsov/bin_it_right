@@ -17,3 +17,4 @@ dist/
 
 ./data
 !./data/processed
+.DS_Store
