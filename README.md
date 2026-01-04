@@ -288,6 +288,8 @@ kubectl apply -k kubernetes/overlays/kind
 
 ### Google Kubernetes Engine
 
+* Current app you could find [here](http://35.233.69.173:8080/docs)
+
 0. [Install](https://docs.cloud.google.com/sdk/docs/install-sdk) `gcloud` cli untility.
    
 1. Enable API in GCP console. Required APIs are:
