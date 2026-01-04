@@ -99,6 +99,50 @@ For studying purposes, this project is implemented with two options of [Pytorch]
 
 ## Project structure
 
+```
+.
+├── bin_it_right                       <- Main application package
+│   ├── api.py                         <- API service definition
+│   ├── config.py                      <- Application config
+│   ├── dataset.py                     <- Dataset classes
+│   └── modeling                       <- Tensorflow / Pytorch model-related files
+│       ├── classifier.py              <- Classification service
+│       ├── image_transformers.py      <- Image transformations
+│       ├── predict.py                 <- CLI predict script
+│       ├── pytorch.py                 <- Pytorch model
+│       ├── tensorflow.py              <- Tensorflow model
+│       └── train.py                   <- CLI train script
+├── data
+│   └── interim                        <- Intermediate data that has been transformed.
+│   └── raw                            <- The original, immutable data dump.
+│   └── processed                      <- The final, canonical data sets for modeling.
+├── docker-compose.yaml                <- Docker compose services definitions
+├── Dockerfile                         <- Dockerfile setup
+├── kind-config.yaml                   <- Configuration of kind deployment
+├── kubernetes                         <- Kubernetes configurations
+│   ├── base
+│   │   ├── deployment.yaml            <- Base deployment 
+│   │   ├── kustomization.yaml         <- Kustomization config
+│   │   └── service.yaml               <- Base service 
+│   └── overlays                       <- Deployment alterations for different providers
+│       ├── gke
+│       │   ├── kustomization.yaml     <- Kustomization config for Google Kubernetes Engine
+│       │   └── service-gke.yaml       <- Service definition for Google Kubernetes Engine
+│       └── kind
+│           ├── kustomization.yaml     <- Kustomization config for Kind
+│           └── service-kind.yaml      <- Service definition for Kind
+├── Makefile                           <- List of commands for simplifications of the calls
+├── notebooks                          <- Jupyter notebooks
+│   ├── 01_etl.ipynb                   <- Load data from sources; Form DataFrames
+│   ├── 02_eda.ipynb                   <- Exploratory data analysis
+│   ├── 03_pytorch_pretrained.ipynb    <- Pytorch pretrained model
+│   ├── 03_pytorch_raw.ipynb           <- Pytorch raw model
+│   ├── 03_tensorflow_pretrained.ipynb <- Tensorflow pretrained model
+│   └── 03_tensorflow_raw.ipynb        <- Tensorflow raw model
+├── pyproject.toml                     <- Project configuration file with package metadata
+├── README.md                          <- Documentation of the project
+```
+
 ## API Contract
 
 ## Run
