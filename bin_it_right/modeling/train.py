@@ -2,43 +2,49 @@ import click
 from dataclasses import dataclass
 
 from bin_it_right.dataset import DataFrameInitializer, GarbageClassificationDataset
-from bin_it_right.modeling.pytorch import get_device, GarbageClassificationCNN, GarbageClassificationPretrained
-from bin_it_right.modeling.image_transformers import get_train_transform, get_val_transform
+from bin_it_right.modeling.pytorch import (
+    get_device,
+    GarbageClassificationCNN,
+    GarbageClassificationPretrained,
+)
+from bin_it_right.modeling.image_transformers import (
+    get_train_transform,
+    get_val_transform,
+)
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
-from torchvision import transforms
 from torch.utils.data import DataLoader
-from typing import Dict, List
+from typing import Dict, List, Any, Optional
+
 
 @dataclass
 class Loaders:
-    train_loader: DataLoader
-    val_loader: DataLoader
-    test_loader: DataLoader
+    train_loader: DataLoader[Any]
+    val_loader: DataLoader[Any]
+    test_loader: DataLoader[Any]
 
-def get_transformers():
-    return {
-        'train': get_train_transform(),
-        'val': get_val_transform()
-    }
+
+def get_transformers() -> Dict[str, Any]:
+    return {"train": get_train_transform(), "val": get_val_transform()}
+
 
 def train_eval_model(
     model: nn.Module,
     num_epochs: int,
     best_model_path: str,
-    optimizer,
-    criterion,
-    device,
-    train_loader,
-    val_loader
+    optimizer: optim.Optimizer,
+    criterion: nn.Module,
+    device: torch.device,
+    train_loader: DataLoader[Any],
+    val_loader: DataLoader[Any],
 ) -> pd.DataFrame:
-    rows = []
+    rows: List[tuple[int, float, float, float, float]] = []
     best_val_acc = 0.0
-    best_model_state = None
+    best_model_state: Optional[Dict[str, Any]] = None
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
@@ -107,18 +113,23 @@ def train_eval_model(
             torch.save(best_model_state, best_model_path)
             print(f"  >> New best model! Val Acc = {val_acc:.4f}")
 
-        print(f'Epoch {epoch+1}/{num_epochs}')
-        print(f'  Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}')
-        print(f'  Validation Loss: {val_loss:.4f}, Validation Acc: {val_acc:.4f}')
+        print(f"Epoch {epoch+1}/{num_epochs}")
+        print(f"  Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}")
+        print(f"  Validation Loss: {val_loss:.4f}, Validation Acc: {val_acc:.4f}")
         scheduler.step(val_loss)
 
         rows.append((epoch, train_loss, train_acc, val_loss, val_acc))
-        
-    return pd.DataFrame(rows, columns=['epoch', 'train_loss', 'train_acc', 'val_loss', 'val_acc'])
 
-def test_model(model: nn.Module, test_loader, device) -> Dict[str, List[float]]:
-    all_labels = []
-    all_preds = []
+    return pd.DataFrame(
+        rows, columns=["epoch", "train_loss", "train_acc", "val_loss", "val_acc"]
+    )
+
+
+def test_model(
+    model: nn.Module, test_loader: DataLoader[Any], device: torch.device
+) -> Dict[str, np.ndarray]:
+    all_labels: List[np.ndarray] = []
+    all_preds: List[np.ndarray] = []
 
     with torch.no_grad():
         for inputs, labels in test_loader:
@@ -131,13 +142,11 @@ def test_model(model: nn.Module, test_loader, device) -> Dict[str, List[float]]:
             all_labels.append(labels.cpu().numpy())
             all_preds.append(preds.cpu().numpy())
 
-    all_labels = np.concatenate(all_labels)
-    all_preds = np.concatenate(all_preds)
+    all_labels_concatenated: np.ndarray = np.concatenate(all_labels)
+    all_preds_concatenated: np.ndarray = np.concatenate(all_preds)
 
-    return {
-        'labels': all_labels,
-        'preds': all_preds
-    }
+    return {"labels": all_labels_concatenated, "preds": all_preds_concatenated}
+
 
 def get_criterion(df: pd.DataFrame, device: torch.device) -> nn.CrossEntropyLoss:
     class_counts = df["class"].value_counts().sort_index()
@@ -148,11 +157,20 @@ def get_criterion(df: pd.DataFrame, device: torch.device) -> nn.CrossEntropyLoss
     class_weights = class_weights / class_weights.mean()
 
     # cast to tensor
-    class_weights_tensor = torch.tensor(class_weights.values, dtype=torch.float32).to(device)
+    class_weights_tensor = torch.tensor(class_weights.values, dtype=torch.float32).to(
+        device
+    )
 
     return nn.CrossEntropyLoss(weight=class_weights_tensor)
 
-def train_raw_model(criterion: nn.CrossEntropyLoss, device: torch.device, loaders: Loaders, model_path: str, epochs: int):
+
+def train_raw_model(
+    criterion: nn.CrossEntropyLoss,
+    device: torch.device,
+    loaders: Loaders,
+    model_path: str,
+    epochs: int,
+) -> None:
     model = GarbageClassificationCNN()
     model.to(device)
 
@@ -169,23 +187,29 @@ def train_raw_model(criterion: nn.CrossEntropyLoss, device: torch.device, loader
         criterion=criterion,
         device=device,
         train_loader=loaders.train_loader,
-        val_loader=loaders.val_loader
+        val_loader=loaders.val_loader,
     )
 
     model_test = GarbageClassificationCNN(num_classes=6)
-    checkpoint = torch.load(
-        model_path,
-        map_location=device
-    )
+    checkpoint = torch.load(model_path, map_location=device)
     model_test.load_state_dict(checkpoint["model_state_dict"])
     model_test.to(device)
     model_test.eval()
 
-    test_data = test_model(model=model_test, test_loader=loaders.test_loader, device=device)
+    test_data = test_model(
+        model=model_test, test_loader=loaders.test_loader, device=device
+    )
 
     click.echo(f"Test accuracy: {(test_data['labels'] == test_data['preds']).mean()}")
 
-def train_pretrained_model(criterion: nn.CrossEntropyLoss, device: torch.device, loaders: Loaders, model_path: str, epochs: int):
+
+def train_pretrained_model(
+    criterion: nn.CrossEntropyLoss,
+    device: torch.device,
+    loaders: Loaders,
+    model_path: str,
+    epochs: int,
+) -> None:
     model = GarbageClassificationPretrained()
     model.to(device)
 
@@ -207,7 +231,7 @@ def train_pretrained_model(criterion: nn.CrossEntropyLoss, device: torch.device,
         criterion=criterion,
         device=device,
         train_loader=loaders.train_loader,
-        val_loader=loaders.val_loader
+        val_loader=loaders.val_loader,
     )
 
     for _, param in model.network.named_parameters():
@@ -225,14 +249,11 @@ def train_pretrained_model(criterion: nn.CrossEntropyLoss, device: torch.device,
         criterion=criterion,
         device=device,
         train_loader=loaders.train_loader,
-        val_loader=loaders.val_loader
+        val_loader=loaders.val_loader,
     )
 
     model = GarbageClassificationPretrained(num_classes=6)
-    checkpoint = torch.load(
-        model_path,
-        map_location=device
-    )
+    checkpoint = torch.load(model_path, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.to(device)
     model.eval()
@@ -241,54 +262,59 @@ def train_pretrained_model(criterion: nn.CrossEntropyLoss, device: torch.device,
 
     click.echo(f"Test accuracy: {(test_data['labels'] == test_data['preds']).mean()}")
 
+
 @click.command()
-@click.argument('dataset_path')
-@click.argument('model_path')
-@click.option('--model', default='raw', help='Type of the model. Available options are: `raw` and `pretrained`')
-@click.option('--model-provider', default='pytorch')
-@click.option('--epochs', default=60)
-def train_classifier(dataset_path, model_path, model, model_provider, epochs):
+@click.argument("dataset_path")
+@click.argument("model_path")
+@click.option(
+    "--model",
+    default="raw",
+    help="Type of the model. Available options are: `raw` and `pretrained`",
+)
+@click.option("--model-provider", default="pytorch")
+@click.option("--epochs", default=60)
+def train_classifier(
+    dataset_path: str, model_path: str, model: str, model_provider: str, epochs: int
+) -> None:
     click.echo(f"Dataset is located in {dataset_path}")
-    dfi = DataFrameInitializer(base_path = dataset_path)
-    df_train  = dfi.from_file("one-indexed-files-notrash_train.txt")
-    df_val  = dfi.from_file("one-indexed-files-notrash_val.txt")
-    df_test  = dfi.from_file("one-indexed-files-notrash_test.txt")
+    dfi = DataFrameInitializer(base_path=dataset_path)
+    df_train = dfi.from_file("one-indexed-files-notrash_train.txt")
+    df_val = dfi.from_file("one-indexed-files-notrash_val.txt")
+    df_test = dfi.from_file("one-indexed-files-notrash_test.txt")
 
     trnsfrms = get_transformers()
 
-    dataset_train = GarbageClassificationDataset(df=df_train, transform=trnsfrms['train'])
-    dataset_val = GarbageClassificationDataset(df=df_val, transform=trnsfrms['val'])
-    dataset_test = GarbageClassificationDataset(df=df_test, transform=trnsfrms['val'])
+    dataset_train = GarbageClassificationDataset(
+        df=df_train, transform=trnsfrms["train"]
+    )
+    dataset_val = GarbageClassificationDataset(df=df_val, transform=trnsfrms["val"])
+    dataset_test = GarbageClassificationDataset(df=df_test, transform=trnsfrms["val"])
 
     loaders = Loaders(
-        train_loader= DataLoader(dataset_train, batch_size=32),
+        train_loader=DataLoader(dataset_train, batch_size=32),
         val_loader=DataLoader(dataset_val, batch_size=32, shuffle=False),
-        test_loader=DataLoader(dataset_test, batch_size=32, shuffle=False)
+        test_loader=DataLoader(dataset_test, batch_size=32, shuffle=False),
     )
 
     device = get_device()
-    criterion = get_criterion(
-        df=df_train,
-        device=device
-    )
-    if model == 'raw':
+    criterion = get_criterion(df=df_train, device=device)
+    if model == "raw":
         train_raw_model(
             criterion=criterion,
             device=device,
             loaders=loaders,
             model_path=model_path,
-            epochs=epochs
+            epochs=epochs,
         )
-    elif model == 'pretrained':
+    elif model == "pretrained":
         train_pretrained_model(
             criterion=criterion,
             device=device,
             loaders=loaders,
             model_path=model_path,
-            epochs=epochs
+            epochs=epochs,
         )
-    
-    
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     train_classifier()
