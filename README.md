@@ -145,6 +145,41 @@ For studying purposes, this project is implemented with two options of [Pytorch]
 
 ## API Contract
 
+### Classify image
+
+#### URL
+
+* `POST /{model_type}/predict`
+  * `model_predit` is enum:
+    * `raw` - raw model
+    * `pretrained` - pretrained model
+
+#### Request
+
+```bash
+curl -X 'POST' \
+  'http://localhost:8080/raw/predict' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'file=@<file_name>;type=image/webp'
+```
+
+#### Response
+
+```json
+{
+  "pred_class": "metal",
+  "classes": {
+    "glass": 0.0000041972912185883615,
+    "paper": 0.014476404525339603,
+    "cardboard": 0.000016134254110511392,
+    "plastic": 0.000027249167033005506,
+    "metal": 0.9854723811149597,
+    "trash": 0.0000036398980682861293
+  }
+}
+```
+
 ## Run
 
 ## Deployment
