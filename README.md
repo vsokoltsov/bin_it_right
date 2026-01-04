@@ -182,6 +182,81 @@ curl -X 'POST' \
 
 ## Run
 
+In order to run the project, it is necessary to install
+
+* [Docker](https://www.docker.com/)
+* [docker-compose](https://docs.docker.com/compose/)
+* [uv](https://docs.astral.sh/uv/)
+* [Make](https://www.gnu.org/software/make/)
+
+### Makefile
+
+This file is used for simplification of the running process
+
+```makefile
+install-kernel:
+	uv run python -m ipykernel install --user --name=bin-it-right --display-name="Trash images classification project"
+
+api:
+	docker-compose up api
+
+jupyter:
+	docker-compose up jupyter
+
+mypy:
+	uv run mypy bin_it_right/
+
+black:
+	black --check bin_it_right/
+
+black-fix:
+	black bin_it_right/
+
+ruff:
+	ruff check bin_it_right/ --fix
+
+lint:
+	make mypy && make black && make ruff
+
+train-cli:
+	python -m bin_it_right.modeling.train $(dataset_path) $(model_path) --model $(model) --model-provider $(model_provider) --epochs $(epochs)
+
+predict-cli:
+	python -m bin_it_right.modeling.predict $(model_path) $(image_path) --model-type $(model_type)
+```
+  
+### API
+
+#### Local
+
+* `uv sync`
+* Activate virtual environment via `source .venv/bin/activate`
+* `python -m bin_it_right.api --host 0.0.0.0 --port ${PORT:-8080}`
+* Go to http://localhost:8080/docs - it would open Swagger interface for verifying the API calls
+
+#### Docker
+
+* `make api`
+
+### Jupyter notebooks
+
+#### Local
+
+* `uv sync`
+* Activate virtual environment via `source .venv/bin/activate`
+* Create kernel via `make install-kernel`
+* Select given kernel in Jupter Notebooks
+  
+#### Docker
+
+* It is possible to run Jupyer Notebooks with docker-compose: `make jupyter`
+
+### CLI
+
+* `make train` - trains model
+* `make predict` - performs predictions
+  * Should be executed after training of model via make train
+
 ## Deployment
 
 ### Kind
